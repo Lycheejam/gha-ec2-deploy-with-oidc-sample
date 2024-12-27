@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: VPC and network stack"
+
+Parameters:
+  Environment:
+    Description: Enter prefix that should be used for tags.
+    Type: String
+    Default: example
+
+  VpcCidr:
+    Description: CIDR block should be used to create the VPC (e.g. 172.21.1.0/24)
+    Type: String
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x. (e.g. 172.21.1.0/24)
+
+  PublicSubnetCidrA:
+    Description: CIDR block should be used to create the VPC (e.g. 172.21.1.0/24)
+    Type: String
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x. (e.g. 172.21.1.0/24)
+
+  PublicSubnetCidrC:
+    Description: CIDR block should be used to create the VPC (e.g. 172.21.1.0/24)
+    Type: String
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x. (e.g. 172.21.1.0/24)
+
+  AvailabilityZoneA:
+    Type: String
+    Default: a
+
+  AvailabilityZoneC:
+    Type: String
+    Default: c
+
+  HomeCidr:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+
+  AmiImageId:
+    Description: instance ami image id
+    Type: AWS::EC2::Image::Id
+    Default: ami-0ab02459752898a60
+
+  InstanceType:
+    Description: instance type
+    Type: String
+    Default: t2.micro
+
+  KeyPairName:
+    Description: key pair name
+    Type: AWS::EC2::KeyPair::KeyName
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref Environment
+              - vpc
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Join
+        - ""
+        - - !Ref AWS::Region
+          - !Ref AvailabilityZoneA
+      CidrBlock: !Ref PublicSubnetCidrA
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref Environment
+              - subnet-public-a
+      VpcId: !Ref Vpc
+
+  PublicSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Join
+        - ""
+        - - !Ref AWS::Region
+          - !Ref AvailabilityZoneC
+      CidrBlock: !Ref PublicSubnetCidrC
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref Environment
+              - subnet-public-c
+      VpcId: !Ref Vpc
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref Environment
+              - igw
+
+  InternetGatewayAttach:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref Vpc
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref Environment
+              - rtb
+      VpcId: !Ref Vpc
+
+  Route:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref RouteTable
+
+  SubnetRouteTableAssociationPublicA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref RouteTable
+
+  SubnetRouteTableAssociationPublicC:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetC
+      RouteTableId: !Ref RouteTable
+
+  PublicSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: Public EC2 instances security group.
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref HomeCidr
+        # NOTE: https://ip-ranges.amazonaws.com/ip-ranges.json
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 3.112.23.0/29
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref Environment
+              - public-sg
+
+  AppInstance01:
+    Type: AWS::EC2::Instance
+    DependsOn: PublicSecurityGroup
+    Properties:
+      ImageId: !Ref AmiImageId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPairName
+      SecurityGroupIds:
+        - !Ref PublicSecurityGroup
+      SubnetId: !Ref PublicSubnetA
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref Environment
+              - App01
+
+  ElasticIp:
+    Type: AWS::EC2::EIP
+    DependsOn: AppInstance01
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref AppInstance01
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref Environment
+              - App01
