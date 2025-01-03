@@ -234,3 +234,22 @@ Resources:
       MaxSessionDuration: 3600
       Path: "/"
       RoleName: "CodeDeployForGithubActions"
+      Policies:
+        - PolicyName: "CodeDeployForGithubActions-Policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # NOTE: https://github.com/sourcetoad/aws-codedeploy-action/blob/v1.12.0/README.md#iam-permissions
+              - Effect: "Allow"
+                Action:
+                  - "s3:Get*"
+                  - "s3:List*"
+                  - "s3:PutObject"
+                  - "s3:ListMultipartUploadParts"
+                  - "s3:AbortMultipartUpload"
+                Resource: !Sub "arn:aws:s3:::${CodeDeployArtifactBucket}/*"
+
+  CodeDeployArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "codedeploy-artifact-bucket-${AWS::AccountId}"
