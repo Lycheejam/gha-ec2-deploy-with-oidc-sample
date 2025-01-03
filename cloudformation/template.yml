@@ -54,6 +54,10 @@ Parameters:
     Description: key pair name
     Type: AWS::EC2::KeyPair::KeyName
 
+  GithubRepoName:
+    Description: Github repository name
+    Type: String
+
 Resources:
   Vpc:
     Type: AWS::EC2::VPC
@@ -202,3 +206,31 @@ Resources:
             - '-'
             - - !Ref Environment
               - App01
+
+  GithubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      # NOTE: https://docs.github.com/ja/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
+      ClientIdList:
+        - "sts.amazonaws.com"
+      Url: "https://token.actions.githubusercontent.com"
+
+  GithubActionsIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Federated: !GetAtt GithubOidcProvider
+            Action: "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub repo:${GithubRepoName}:*
+              StringEquals:
+                token.actions.githubusercontent.com:aud: "sts.amazonaws.com"
+      Description: "Github Actions IAM Role"
+      MaxSessionDuration: 3600
+      Path: "/"
+      RoleName: "CodeDeployForGithubActions"
