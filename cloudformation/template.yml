@@ -187,6 +187,7 @@ Resources:
       SecurityGroupIds:
         - !Ref PublicSecurityGroup
       SubnetId: !Ref PublicSubnetA
+      IamInstanceProfile: !Ref AppInstanceProfile
       Tags:
         - Key: Name
           Value: !Join
@@ -304,9 +305,43 @@ Resources:
       ApplicationName: !Ref CodeDeployApplication
       DeploymentConfigName: CodeDeployDefault.OneAtATime
       DeploymentGroupName: CodeDeployGroupName
-      ServiceRoleArn: !Ref CodeDeployServiceRole
+      ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
       AutoRollbackConfiguration:
           Enabled: true
           Events:
             - DEPLOYMENT_FAILURE
             - DEPLOYMENT_STOP_ON_REQUEST
+
+  AppInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/"
+      RoleName: AppInstanceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+                - "codedeploy.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      Policies:
+        - PolicyName: "AppInstanceRole-policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action: 
+                  - "s3:getObject"
+                Resource: !Sub arn:aws:s3:::${CodeDeployArtifactBucket}/*
+
+  AppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: 
+        - !Ref AppInstanceRole
