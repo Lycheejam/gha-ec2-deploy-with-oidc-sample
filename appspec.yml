@@ -8,5 +8,5 @@ file_exists_behavior: RETAIN
 hooks:
   ApplicationStart:
     - location: scripts/run.sh
-      timeout: 3600
+      timeout: 60
       runas: root
