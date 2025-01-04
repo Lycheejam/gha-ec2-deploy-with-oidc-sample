@@ -303,7 +303,7 @@ Resources:
     Type: AWS::CodeDeploy::DeploymentGroup
     Properties:
       ApplicationName: !Ref CodeDeployApplication
-      DeploymentConfigName: CodeDeployDefault.OneAtATime
+      DeploymentConfigName: CodeDeployDefault.AllAtOnce
       DeploymentGroupName: CodeDeployGroupName
       ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
       AutoRollbackConfiguration:
