@@ -255,10 +255,6 @@ Resources:
                 Resource: !Sub arn:aws:s3:::${CodeDeployArtifactBucket}/*
               - Action:
                   - codedeploy:CreateDeployment
-                Effect: Allow
-                Resource:
-                  - !Sub arn:aws:codedeploy:*:${AWS::AccountId}:application:${CodeDeployApplication}
-              - Action:
                   - codedeploy:Batch*
                   - codedeploy:Get*
                   - codedeploy:List*
