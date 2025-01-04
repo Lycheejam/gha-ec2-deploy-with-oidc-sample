@@ -1,0 +1,52 @@
+name: Build and Deploy
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout Repository
+
+      - name: Setup PHP with composer v2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies with npm
+        run: npm install
+
+      - name: Install dependencies with composer
+        run: composer install
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.IAMROLE_GITHUB }}
+          role-session-name: GitHub-Action-Role
+          aws-region: ap-northeast-1
+      
+      - name: AWS CodeDeploy
+        uses: sourcetoad/aws-codedeploy-action@v1
+        with:
+          codedeploy_name: gha-ec2-deploy-with-oidc-sample
+          codedeploy_group: CodeDeployGroupName
+          s3_bucket: ${{ secrets.S3_BUCKET }}
+          s3_folder: production
+          directory: ./

@@ -1,0 +1,10 @@
+{
+    "Parameters": {
+        "VpcCidr": "10.0.0.0/16",
+        "PublicSubnetCidrA": "10.0.1.0/24",
+        "PublicSubnetCidrC": "10.0.2.0/24",
+        "HomeCidr": "xxx.xxx.xxx.xxx/32",
+        "KeyPairName": "my-key-pair",
+        "GithubRepoName": "gha-ec2-deploy-with-oidc-sample"
+    }
+}
