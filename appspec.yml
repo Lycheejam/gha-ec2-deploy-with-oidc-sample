@@ -1,0 +1,10 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /var/www/gha-ec2-deploy-with-oidc-sample
+hooks:
+  ApplicationStart:
+    - location: scripts/run.sh
+      timeout: 3600
+      runas: root
