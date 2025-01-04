@@ -3,6 +3,8 @@ os: linux
 files:
   - source: /
     destination: /var/www/gha-ec2-deploy-with-oidc-sample
+# NOTE: https://docs.aws.amazon.com/ja_jp/codedeploy/latest/userguide/reference-appspec-file-structure-files.html
+file_exists_behavior: RETAIN
 hooks:
   ApplicationStart:
     - location: scripts/run.sh
