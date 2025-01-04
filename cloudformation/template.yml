@@ -161,6 +161,7 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref HomeCidr
+
         # NOTE: https://ip-ranges.amazonaws.com/ip-ranges.json
         - IpProtocol: tcp
           FromPort: 22
@@ -208,13 +209,13 @@ Resources:
             - - !Ref Environment
               - App01
 
+  # NOTE: https://docs.github.com/ja/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
   GithubOidcProvider:
     Type: AWS::IAM::OIDCProvider
     Properties:
-      # NOTE: https://docs.github.com/ja/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
       ClientIdList:
-        - "sts.amazonaws.com"
-      Url: "https://token.actions.githubusercontent.com"
+        - sts.amazonaws.com
+      Url: https://token.actions.githubusercontent.com
 
   GithubActionsIamRole:
     Type: AWS::IAM::Role
@@ -222,51 +223,52 @@ Resources:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Effect: "Allow"
+          - Effect: Allow
             Principal:
-              Federated: !GetAtt GithubOidcProvider
-            Action: "sts:AssumeRoleWithWebIdentity"
+              Federated: !Ref GithubOidcProvider
+            Action: sts:AssumeRoleWithWebIdentity
             Condition:
               StringLike:
                 token.actions.githubusercontent.com:sub: !Sub repo:${GithubRepoName}:*
               StringEquals:
-                token.actions.githubusercontent.com:aud: "sts.amazonaws.com"
-      Description: "Github Actions IAM Role"
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+      Description: Github Actions IAM Role
       MaxSessionDuration: 3600
-      Path: "/"
-      RoleName: "CodeDeployForGithubActions"
+      Path: /
+      RoleName: CodeDeployForGithubActions
       Policies:
-        - PolicyName: "CodeDeployForGithubActions-Policy"
+        - PolicyName: CodeDeployForGithubActions-Policy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
+
               # NOTE: https://github.com/sourcetoad/aws-codedeploy-action/blob/v1.12.0/README.md#iam-permissions
-              - Effect: "Allow"
+              - Effect: Allow
                 Action:
-                  - "s3:Get*"
-                  - "s3:List*"
-                  - "s3:PutObject"
-                  - "s3:ListMultipartUploadParts"
-                  - "s3:AbortMultipartUpload"
-                Resource: !Sub "arn:aws:s3:::${CodeDeployArtifactBucket}/*"
+                  - s3:Get*
+                  - s3:List*
+                  - s3:PutObject
+                  - s3:ListMultipartUploadParts
+                  - s3:AbortMultipartUpload
+                Resource: !Sub arn:aws:s3:::${CodeDeployArtifactBucket}/*
               - Action:
-                  - "codedeploy:CreateDeployment"
-                Effect: "Allow"
+                  - codedeploy:CreateDeployment
+                Effect: Allow
                 Resource:
-                  - !Sub "arn:aws:codedeploy:*:${AWS::AccountId}:application:${CodeDeployApplication}"
+                  - !Sub arn:aws:codedeploy:*:${AWS::AccountId}:application:${CodeDeployApplication}
               - Action:
-                  - "codedeploy:Batch*"
-                  - "codedeploy:Get*"
-                  - "codedeploy:List*"
-                  - "codedeploy:RegisterApplicationRevision"
-                Effect: "Allow"
-                Resource: 
-                  - !Sub "arn:aws:codedeploy:*:${AWS::AccountId}:*"
+                  - codedeploy:Batch*
+                  - codedeploy:Get*
+                  - codedeploy:List*
+                  - codedeploy:RegisterApplicationRevision
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:codedeploy:*:${AWS::AccountId}:*
 
   CodeDeployArtifactBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "codedeploy-artifact-bucket-${AWS::AccountId}"
+      BucketName: !Sub codedeploy-artifact-bucket-${AWS::AccountId}
 
   CodeDeployServiceRole:
     Type: AWS::IAM::Role
@@ -274,31 +276,31 @@ Resources:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
-          -
-            Effect: "Allow"
+          - Effect: Allow
             Principal:
               Service:
-                - "codedeploy.amazonaws.com"
+                - codedeploy.amazonaws.com
             Action:
-              - "sts:AssumeRole"
-      Path: "/"
+              - sts:AssumeRole
+      Path: /
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole
       Policies:
-        - PolicyName: "CodeDeployServiceRole-policy"
+        - PolicyName: CodeDeployServiceRole-policy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Effect: "Allow"
-                Action: 
-                  - "iam:PassRole"
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
                 Resource:
-                  - !Sub "arn:aws:codedeploy:*:${AWS::AccountId}:*"
+                  - !Sub arn:aws:codedeploy:*:${AWS::AccountId}:*
 
   CodeDeployApplication:
     Type: AWS::CodeDeploy::Application
     Properties:
-      ApplicationName: "gha-ec2-deploy-with-oidc-sample"
+      ApplicationName: gha-ec2-deploy-with-oidc-sample
+
   CodeDeployDeploymentGroup:
     Type: AWS::CodeDeploy::DeploymentGroup
     Properties:
@@ -307,41 +309,40 @@ Resources:
       DeploymentGroupName: CodeDeployGroupName
       ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
       AutoRollbackConfiguration:
-          Enabled: true
-          Events:
-            - DEPLOYMENT_FAILURE
-            - DEPLOYMENT_STOP_ON_REQUEST
+        Enabled: true
+        Events:
+          - DEPLOYMENT_FAILURE
+          - DEPLOYMENT_STOP_ON_REQUEST
 
   AppInstanceRole:
     Type: AWS::IAM::Role
     Properties:
-      Path: "/"
+      Path: /
       RoleName: AppInstanceRole
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
-          -
-            Effect: "Allow"
+          - Effect: Allow
             Principal:
               Service:
-                - "ec2.amazonaws.com"
-                - "codedeploy.amazonaws.com"
+                - ec2.amazonaws.com
+                - codedeploy.amazonaws.com
             Action:
-              - "sts:AssumeRole"
+              - sts:AssumeRole
       ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
       Policies:
-        - PolicyName: "AppInstanceRole-policy"
+        - PolicyName: AppInstanceRole-policy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Effect: "Allow"
-                Action: 
-                  - "s3:getObject"
+              - Effect: Allow
+                Action:
+                  - s3:getObject
                 Resource: !Sub arn:aws:s3:::${CodeDeployArtifactBucket}/*
 
   AppInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      Roles: 
+      Roles:
         - !Ref AppInstanceRole
